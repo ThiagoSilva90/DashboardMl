@@ -33,19 +33,10 @@ def analise_faixa_geral(df):
    
     faixas = [0, 50, 100, 200, 500, float('inf')]
     rotulos = ['0-50', '51-100', '101-200', '201-500', '501+']
-    
-   
     df['Preço'] = pd.to_numeric(df['Preço'], errors='coerce')
-    
-   
     df = df.dropna(subset=['Preço'])  
-
-    
     df['Faixa de Preço'] = pd.cut(df['Preço'], bins=faixas, labels=rotulos, right=False)
-    
-    
     faixa_contagem = df['Faixa de Preço'].value_counts().sort_index()
-    
     return faixa_contagem
 
 def analise_full_geral(df):   
@@ -206,35 +197,22 @@ def getAnuncioPreco(df, produto, preco):
     
     return f"Posição do anuncio em relação a Preco: {produto_index}"
 
-import pandas as pd
-import streamlit as st
-import re
-
-import pandas as pd
-import streamlit as st
-import re
-
 def print_links(df):
-    # Leitura do CSV e processamento dos dados
+   
     df = pd.read_csv(csv, sep=',', thousands='.', decimal=',')
     df['Reviews'] = df['Reviews'].str.replace(r'[()]', '', regex=True)
     df['Reviews'] = df['Reviews'].astype(int)
 
-    # Ordena o DataFrame pelos reviews de forma decrescente
     df_crescente = df.sort_values(by='Reviews', ascending=False).reset_index(drop=True)
 
-    # Remove duplicatas de nome de produto
     nomes_exibidos = set()
     links_exibidos = []
 
-    # Exibindo URLs numeradas no Streamlit
     for idx, row in df_crescente.iterrows():
-        nome_produto = row['Nome do Produto'].lower()  # Obtém o nome do produto em minúsculo
+        nome_produto = row['Nome do Produto'].lower()  
         url_produto = row['Url']
 
-        # Verifica se o nome do produto já foi exibido
         if nome_produto not in nomes_exibidos:
-            # Exibindo o nome do produto como link
             st.markdown(f"""
             <div style='background-color: #1b202b; padding: 10px; border-radius: 8px; margin-bottom: 8px;'>
                 <p style='font-size: 16px; font-weight: bold; color: #333;'> 
@@ -246,19 +224,11 @@ def print_links(df):
             </div>
             """, unsafe_allow_html=True)
 
-            # Adiciona o nome do produto ao conjunto para garantir que não seja exibido novamente
             nomes_exibidos.add(nome_produto)
             links_exibidos.append(url_produto)
 
-        # Limita a exibição ao top 10
         if len(links_exibidos) >= 10:
             break
-
-
-
-
-
-import streamlit as st
 
 st.set_page_config(
     page_title="App Marketplace",
@@ -281,14 +251,16 @@ st.header(f'Análise dos Produtos na Página de Busca: :orange[{produto}]')
 
 preco, faixa, vendas = st.columns(3, vertical_alignment="top", border=True)
 
+media_geral, max_geral, min_geral = analise_preco_geral(df_tratado)
+
 with preco:
     st.subheader('Análise Preço e Full')
     st.markdown(f'''
     - Anúncios Coletados: {df_tratado.shape[0]} anúncios
     - Quantidade Anúncios no Full:  {analise_full_geral(df_tratado)} anúncios
-    - Média De Preço Geral:  R${analise_preco_geral(df_tratado)[0]:.2f}
-    - Preço Mais alto:  R${analise_preco_geral(df_tratado)[1]:.2f}
-    - Preço Mais baixo:  R${analise_preco_geral(df_tratado)[2]:.2f}
+    - Média De Preço Geral:  R${media_geral:.2f}
+    - Preço Mais alto:  R${max_geral:.2f}
+    - Preço Mais baixo:  R${min_geral:.2f}
     ''')
 
 with faixa:
@@ -304,6 +276,8 @@ with faixa:
     - Valores De 201 a 500 Reais:  {totais_faixas[3]} anúncios
     - Superior a 500 Reais:  {totais_faixas[-1]} anúncios
     ''')
+
+
 
 with vendas:
     st.subheader('Vendas:')
@@ -323,14 +297,16 @@ preco_top, faixa_top, vendas_tops = st.columns(3, vertical_alignment="top", bord
 
 df_top10 = get_top_10(csv)
 
+media_top, max_top, min_top = analise_preco_geral(df_top10)
+
 with preco_top:
     st.subheader('Análise Preço e Full')
     st.markdown(f'''
     - Quantidade Anúncios Pesquisados: 10 
     - Quantidade Anúncios no Full:  {analise_full_geral(df_top10)}
-    - Média De Preço Geral:  R${analise_preco_geral(df_top10)[0]:.2f}
-    - Preço Mais alto Geral:  R${analise_preco_geral(df_top10)[1]:.2f}
-    - Preço Mais baixo Geral:  R${analise_preco_geral(df_top10)[2]:.2f}
+    - Média De Preço Geral:  R${media_top:.2f}
+    - Preço Mais alto Geral:  R${max_top:.2f}
+    - Preço Mais baixo Geral:  R${min_top:.2f}
     ''')
 
 with faixa_top:
