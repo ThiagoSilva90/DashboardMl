@@ -22,62 +22,6 @@ def get_top_10(df):
 
     return df_top10
 
-def analise_full_top(df):
-    #? Análise Full
-    full_qtd = df_top10[df_top10['Full'] == 'full'].shape[0]
-    
-    return full_qtd
-
-def vendas_top(df):
-    media_top_vendas = df['Reviews'].mean()
-    max_top_vendas = df['Reviews'].max()
-    min_top_venda = df['Reviews'].min()
-    
-    df_full = df[df['Full'] == 'full']  # Filtra os produtos que são Full
-    media_full_vendas_top = df_full['Reviews'].mean() if not df_full.empty else 0
-    max_full_vendas_top = df_full['Reviews'].max() if not df_full.empty else 0
-    min_full_venda_top = df_full['Reviews'].min() if not df_full.empty else 'Nenhuma venda'
-    soma_total = df['Reviews'].sum()
-
-    # Retorna a análise geral e a análise dos produtos Full
-    return {
-        "media_top_vendas": media_top_vendas,
-        "max_top_vendas": max_top_vendas,
-        "min_top_venda": min_top_venda,
-        "media_full_vendas": media_full_vendas_top,
-        "max_full_vendas": max_full_vendas_top,
-        "min_full_venda": soma_total
-    }
-
-def analise_faixa_top(df):
-    
-    faixas = [0, 50, 100, 200, 500, float('inf')]
-    rotulos = ['0-50', '51-100', '101-200', '201-500', '501+']
-    
-    
-    df['Preço'] = pd.to_numeric(df['Preço'], errors='coerce')
-    
-   
-    df = df.dropna(subset=['Preço'])  
-
-    
-    df['Faixa de Preço'] = pd.cut(df['Preço'], bins=faixas, labels=rotulos, right=False)
-    
-    
-    faixa_contagem = df['Faixa de Preço'].value_counts().sort_index()
-    
-    return faixa_contagem
-
-    return faixa_contagem
-
-def analise_preco_top(df):
-    #?  Análise de Preço
-    media_top_preco = df_top10['Preço'].mean()
-    max_top_preco = df_top10['Preço'].max()
-    min_top_preco = df_top10['Preço'].min()
-    
-    return media_top_preco, max_top_preco, min_top_preco
-
 def analise_preco_geral(df):
     #? - Preço
     media_geral_preco = df['Preço'].mean()
@@ -104,7 +48,7 @@ def analise_faixa_geral(df):
     
     return faixa_contagem
 
-def  analise_full_geral(df):   
+def analise_full_geral(df):   
     #? Análise Full
     full_qtd = df[df['Full'] == 'full'].shape[0]
 
@@ -163,72 +107,85 @@ def analise_vendas_gerais(df):
         "min_full_venda": soma_total
     }
 
-def get_tamanho(df):
-    df = pd.read_csv(csv, sep = ',', thousands='.', decimal=',')
-
-    n_linhas = df.shape[0]
-
-    return f"Quantidade de anuúncios: {n_linhas}"
-
 def scraping(produto):
-    produto_split = produto.split()  # Divide o nome do produto em palavras.
-    produto_join = "-".join(produto_split)  # Junta as palavras com hífens para formar a URL.
-    produto_urllib = urllib.parse.quote(produto)  # Codifica o nome do produto para a URL.
-    url = f"https://lista.mercadolivre.com.br/{produto_join}#D[A:{produto_urllib}]"
-        
+    # Divide o nome do produto em palavras para filtros e formata a URL.
+    palavras_filtro = produto.lower().split()
+    produto_join = "-".join(palavras_filtro)
+    produto_urllib = urllib.parse.quote(produto)
+    
+    base_url = f"https://lista.mercadolivre.com.br/{produto_join}#D[A:{produto_urllib}]"
+
     try:
         os.system("cls")  # Limpa o terminal.
-        response = requests.get(url)  # Realiza a requisição HTTP para a URL do Mercado Livre.
-        soup = BeautifulSoup(response.text, 'html.parser')  # Faz o parsing do HTML da página.
-        
-        products = soup.find_all('li', {'class': 'ui-search-layout__item'})
 
+        # Variáveis para armazenar os resultados
         nomes = []
         precos = []
         fulls = [] 
         urls = []
         reviews = []
-        descricao = []
 
-        for product in products:
-            name_tag = product.find('a', {'class': 'poly-component__title'})
-            link_tag = product.find('a', {'class': 'poly-component__title'})
-            price_tag = product.find('span', {'class': 'andes-money-amount__fraction'})
-            review_tag = product.find('span', {'class': 'poly-reviews__total'})
-            full_tag = product.find('span', {'class': 'poly-component__shipped-from'})
-            
+        pagina = 1
 
+        while len(nomes) < 50:
+            # Constrói a URL com paginação
+            url = f"{base_url}&page={pagina}"
+            response = requests.get(url)
+            soup = BeautifulSoup(response.text, 'html.parser')
 
-            nome = name_tag.text.strip() if name_tag else 0
-            preco = price_tag.text.strip() if price_tag else 0
-            review = review_tag.text.strip() if review_tag else 0
-            full = 'full' if full_tag else 0  
-            url = link_tag['href'] if link_tag else 0  
+            products = soup.find_all('li', {'class': 'ui-search-layout__item'})
 
-            
-            nomes.append(nome)
-            precos.append(preco)
-            fulls.append(full)
-            urls.append(url)
-            reviews.append(review)
+            if not products:
+                print("Nenhum produto encontrado ou fim das páginas.")
+                break
 
+            for product in products:
+                # Extrai as informações dos produtos
+                name_tag = product.find('a', {'class': 'poly-component__title'})
+                link_tag = product.find('a', {'class': 'poly-component__title'})
+                price_tag = product.find('span', {'class': 'andes-money-amount__fraction'})
+                review_tag = product.find('span', {'class': 'poly-reviews__total'})
+                full_tag = product.find('span', {'class': 'poly-component__shipped-from'})
+
+                # Obtém os dados, garantindo que existam
+                nome = name_tag.text.strip().lower() if name_tag else 0
+                preco = price_tag.text.strip() if price_tag else 0
+                review = review_tag.text.strip() if review_tag else 0
+                full = 'full' if full_tag else 0
+                url = link_tag['href'] if link_tag else 0
+
+                # Verifica se todas as palavras do filtro estão no título
+                if all(palavra in nome for palavra in palavras_filtro):
+                    nomes.append(nome)
+                    precos.append(preco)
+                    fulls.append(full)
+                    urls.append(url)
+                    reviews.append(review)
+
+                # Sai do loop se já houver 50 produtos relevantes
+                if len(nomes) >= 50:
+                    break
+
+            # Avança para a próxima página
+            pagina += 1
 
         # Criar DataFrame
         df = pd.DataFrame({
-                'Nome do Produto': nomes,
-                'Preço': precos,
-                'Full': fulls,
-                'Url': urls,
-                'Reviews': reviews,
-            })
+            'Nome do Produto': nomes,
+            'Preço': precos,
+            'Full': fulls,
+            'Url': urls,
+            'Reviews': reviews,
+        })
 
+        # Salva o DataFrame em um arquivo CSV
         csv_path = 'pesquisa.csv'
         if os.path.exists(csv_path):
             os.remove(csv_path)
 
         df.to_csv(csv_path, index=False)
 
-        return csv_path  
+        return csv_path  # Retorna o caminho do CSV
 
     except Exception as e:
         print(f'Erro: {e}')
@@ -249,28 +206,56 @@ def getAnuncioPreco(df, produto, preco):
     
     return f"Posição do anuncio em relação a Preco: {produto_index}"
 
+import pandas as pd
+import streamlit as st
+import re
+
+import pandas as pd
+import streamlit as st
+import re
+
 def print_links(df):
-     # Leitura do CSV e processamento dos dados
+    # Leitura do CSV e processamento dos dados
     df = pd.read_csv(csv, sep=',', thousands='.', decimal=',')
     df['Reviews'] = df['Reviews'].str.replace(r'[()]', '', regex=True)
     df['Reviews'] = df['Reviews'].astype(int)
-    
+
+    # Ordena o DataFrame pelos reviews de forma decrescente
     df_crescente = df.sort_values(by='Reviews', ascending=False).reset_index(drop=True)
-    df_top10 = df_crescente.head(10)
+
+    # Remove duplicatas de nome de produto
+    nomes_exibidos = set()
+    links_exibidos = []
 
     # Exibindo URLs numeradas no Streamlit
-    for idx, url in enumerate(df_top10['Url'], 1):
-        # Exibindo cada URL com um estilo visual
-        st.markdown(f"""
-        <div style='background-color: #1b202b; padding: 10px; border-radius: 8px; margin-bottom: 8px;'>
-            <p style='font-size: 16px; font-weight: bold; color: #333;'> 
-                <span style='color: #ef8d2d;'>{idx}.</span> 
-                <a href='{url}' target='_blank' style='color: #1E88E5; text-decoration: none;'> 
-                    {url}
-                </a>
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
+    for idx, row in df_crescente.iterrows():
+        nome_produto = row['Nome do Produto'].lower()  # Obtém o nome do produto em minúsculo
+        url_produto = row['Url']
+
+        # Verifica se o nome do produto já foi exibido
+        if nome_produto not in nomes_exibidos:
+            # Exibindo o nome do produto como link
+            st.markdown(f"""
+            <div style='background-color: #1b202b; padding: 10px; border-radius: 8px; margin-bottom: 8px;'>
+                <p style='font-size: 16px; font-weight: bold; color: #333;'> 
+                    <span style='color: #ef8d2d;'>{links_exibidos.__len__() + 1}.</span> 
+                    <a href='{url_produto}' target='_blank' style='color: #1E88E5; text-decoration: none;'> 
+                        {row['Nome do Produto']}
+                    </a>
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+
+            # Adiciona o nome do produto ao conjunto para garantir que não seja exibido novamente
+            nomes_exibidos.add(nome_produto)
+            links_exibidos.append(url_produto)
+
+        # Limita a exibição ao top 10
+        if len(links_exibidos) >= 10:
+            break
+
+
+
 
 
 import streamlit as st
@@ -299,8 +284,8 @@ preco, faixa, vendas = st.columns(3, vertical_alignment="top", border=True)
 with preco:
     st.subheader('Análise Preço e Full')
     st.markdown(f'''
-    - {get_tamanho(df_tratado)} 
-    - Quantidade Anúncios no Full:  {analise_full_geral(df_tratado)}
+    - Anúncios Coletados: {df_tratado.shape[0]} anúncios
+    - Quantidade Anúncios no Full:  {analise_full_geral(df_tratado)} anúncios
     - Média De Preço Geral:  R${analise_preco_geral(df_tratado)[0]:.2f}
     - Preço Mais alto:  R${analise_preco_geral(df_tratado)[1]:.2f}
     - Preço Mais baixo:  R${analise_preco_geral(df_tratado)[2]:.2f}
@@ -342,15 +327,15 @@ with preco_top:
     st.subheader('Análise Preço e Full')
     st.markdown(f'''
     - Quantidade Anúncios Pesquisados: 10 
-    - Quantidade Anúncios no Full:  {analise_full_top(df_top10)}
-    - Média De Preço Geral:  R${analise_preco_top(df_top10)[0]:.2f}
-    - Preço Mais alto Geral:  R${analise_preco_top(df_top10)[1]:.2f}
-    - Preço Mais baixo Geral:  R${analise_preco_top(df_top10)[2]:.2f}
+    - Quantidade Anúncios no Full:  {analise_full_geral(df_top10)}
+    - Média De Preço Geral:  R${analise_preco_geral(df_top10)[0]:.2f}
+    - Preço Mais alto Geral:  R${analise_preco_geral(df_top10)[1]:.2f}
+    - Preço Mais baixo Geral:  R${analise_preco_geral(df_top10)[2]:.2f}
     ''')
 
 with faixa_top:
     st.subheader('Faixa de Preço:')
-    faixa_contagem = analise_faixa_top(df_top10)
+    faixa_contagem = analise_faixa_geral(df_top10)
     totais_faixas_top = []
     for faixa, contagem in faixa_contagem.items():
         totais_faixas_top.append(contagem)
@@ -364,13 +349,13 @@ with faixa_top:
 
 with vendas_tops:
     st.subheader('Vendas:')
-    vendas_gerais_top = vendas_top(df_top10)
+    vendas_gerais = analise_vendas_gerais(df_top10)
     st.markdown(f'''
-    - Média de Vendas Por Anúncio: { vendas_gerais_top["media_top_vendas"]:.0f}
-    - Anúncio com mais vendas:  {vendas_gerais_top["max_top_vendas"]:.0f}
-    - Anúncio com menos vendas:  {vendas_gerais_top["min_top_venda"]:.0f}
-    - Anúncio com mais vendas Full:  {vendas_gerais_top["max_full_vendas"]:.0f}
-    - Total de vendas do Top 10:  {vendas_gerais_top["min_full_venda"]:.0f}
+    - Média de Vendas Por Anúncio: { vendas_gerais["media_geral_vendas"]:.0f}
+    - Anúncio com mais vendas:  {vendas_gerais["max_geral_vendas"]:.0f}
+    - Anúncio com menos vendas:  {vendas_gerais["min_geral_venda"]:.0f}
+    - Anúncio com mais vendas Full:  {vendas_gerais["max_full_vendas"]:.0f}
+    - Total de vendas da Páginas:  {vendas_gerais["min_full_venda"]:.0f}
     ''')
 
 if preco_pesquisa:
@@ -389,4 +374,4 @@ st.header('Quantidade de Anúncios por Faixa de Preço')
 grafico_vendas_anuncios(df_tratado)
 
 st.header('Url dos anúncios melhor rankeados:')
-print_links(df_top10)
+print_links(df_tratado)
