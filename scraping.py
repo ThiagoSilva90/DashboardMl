@@ -154,7 +154,7 @@ def scraping(produto):
                     reviews.append(review)
 
                 # Sai do loop se já houver 50 produtos relevantes
-                if len(nomes) >= 50:
+                if len(nomes) >= 50 or pagina == 4:
                     break
 
             # Avança para a próxima página
